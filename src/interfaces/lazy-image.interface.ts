@@ -1,5 +1,5 @@
-import { ReplaySubject } from "rxjs/ReplaySubject";
-import { Subject } from "rxjs/Subject";
+import { ReplaySubject } from 'rxjs/ReplaySubject';
+import { Subject } from 'rxjs/Subject';
 import { LazyImageAdapter } from './lazy-image-adapter.interface';
 
 export interface LazyImage {

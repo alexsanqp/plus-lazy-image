@@ -1,24 +1,19 @@
 import {
-    OnInit,
-    Directive,
-    ElementRef,
-    Input,
-    Output,
-    NgZone,
-    OnChanges,
-    OnDestroy,
-    AfterContentInit,
-    EventEmitter,
-    HostBinding
-} from "@angular/core";
-import { ReplaySubject } from "rxjs/ReplaySubject";
-import { Subject } from "rxjs/Subject";
-import { Observable } from "rxjs/Observable";
-import { switchMap, debounceTime } from "rxjs/operators";
-import { OperatorFunction } from "rxjs/interfaces";
-import { LazyImage } from "../interfaces/lazy-image.interface";
-import { Constants } from "../core/constants";
-import { LazyImageAdapter } from "../interfaces/lazy-image-adapter.interface";
+    OnInit, Directive, ElementRef, Input, Output, NgZone, OnChanges,
+    OnDestroy, AfterContentInit, EventEmitter, HostBinding,
+} from '@angular/core';
+import { LazyImage } from '../interfaces/lazy-image.interface';
+import { Constants } from '../core/constants';
+import { LazyImageAdapter } from '../interfaces/lazy-image-adapter.interface';
+import { ImageBackgroundElement } from '../core/image-background-element';
+import { ImageElement } from '../core/image-element';
+import { Subscription } from 'rxjs/Subscription';
+import { ReplaySubject } from 'rxjs/ReplaySubject';
+import { Subject } from 'rxjs/Subject';
+import { Observable } from 'rxjs/Observable';
+import { switchMap, debounceTime } from 'rxjs/operators';
+import { OperatorFunction } from 'rxjs/interfaces';
+import { Observer } from 'rxjs/Observer';
 
 /**
  * Angular plus-lazy-image Directive
@@ -27,198 +22,203 @@ import { LazyImageAdapter } from "../interfaces/lazy-image-adapter.interface";
     selector: '[plus-lazy-image]',
 })
 export class PlusLazyImageDirective implements OnInit, OnChanges, AfterContentInit, OnDestroy {
+    @Input('plus-lazy-bg')
+    public plusLazyBg: boolean;
 
-    //@Input('plus-lazy-all') images: any;
+    @Input('plus-lazy-image')
+    public image: string;
 
-    @Input('plus-lazy-bg') _isBackgroundImage: boolean;
-    @Input('plus-lazy-image') image: string;
-    @Input('plus-pre-image') preImage: string;
-    @Input('plus-pre-loader') isPreLoader: boolean;
-    @Input('plus-start-load') startLoad: Subject<boolean> | ReplaySubject<boolean>;
+    @Input('plus-pre-image')
+    public preImage: string;
 
-    @Output('plus-on-load') onLoad: EventEmitter<boolean> = new EventEmitter();
+    @Input('plus-pre-loader')
+    public isPreLoader: boolean;
 
-    @HostBinding('class.plus-loading') plusLoadingClass = true;
-    @HostBinding('class.plus-loaded') plusLoadedClass   = false;
-    @HostBinding('class.plus-failed') plusFailedClass   = false;
+    @Input('plus-start-load')
+    public startLoad: Subject<boolean> | ReplaySubject<boolean>;
 
-    public element: HTMLElement;
+    @Output('plus-on-load')
+    public onLoad: EventEmitter<boolean> = new EventEmitter();
 
+    @HostBinding('class.plus-loading')
+    public plusLoadingClass = true;
+
+    @HostBinding('class.plus-loaded')
+    public plusLoadedClass = false;
+
+    @HostBinding('class.plus-failed')
+    public plusFailedClass = false;
+
+    public element: HTMLImageElement | HTMLDivElement;
+
+    private _subscribe: Subscription;
     private _imagesSubject: ReplaySubject<LazyImage>;
 
     constructor(elRef: ElementRef, private ngZone: NgZone) {
-        this.element            = elRef.nativeElement;
-        this._imagesSubject     = new ReplaySubject<LazyImage>();
-        this.isPreLoader        = true;
-        this._isBackgroundImage = false;
+        this.element        = elRef.nativeElement;
+        this._imagesSubject = new ReplaySubject<LazyImage>();
+        this._subscribe     = new Subscription();
+        this.isPreLoader    = true;
+        this.plusLazyBg     = false;
     }
 
     public ngOnInit(): void {
-        let image: LazyImageAdapter<HTMLImageElement | HTMLDivElement> = this._getElement();
+        const imageAdapter: LazyImageAdapter<HTMLImageElement | HTMLDivElement>
+                  = this._getElement(this.element);
 
-        this._startLoading(image);
+        this._startLoading(imageAdapter);
 
         this._imagesSubject.next({
             path     : this.image,
-            element  : image,
-            startLoad: this.startLoad || null
+            element  : imageAdapter,
+            startLoad: this.startLoad || null,
         });
     }
 
     public ngOnChanges(): void {
-
+        // TODO ...
     }
 
     public ngAfterContentInit(): void {
         this.ngZone.runOutsideAngular(() => {
-            this._imagesSubject.pipe(
+            const imagesSubId = this._imagesSubject.pipe(
                 debounceTime(10),
-                this.onHandlerLazyImage()
-            ).subscribe(success => this.onLoad.emit(<boolean>success));
+                this._onHandlerLazyImage(),
+            )
+                .subscribe((success) => this.onLoad.emit(success));
+
+            this._subscribe.add(imagesSubId);
         });
     }
 
     public ngOnDestroy(): void {
-
+        this._subscribe.unsubscribe();
     }
 
-    public onHandlerLazyImage(): OperatorFunction<any, any> {
+    /**
+     * Handler method for each image
+     * @returns {OperatorFunction<any, any>}
+     * @private
+     */
+    private _onHandlerLazyImage(): OperatorFunction<any, any> {
         return switchMap((imageItem: LazyImage) => {
-            const imageLazy: LazyImageAdapter<HTMLImageElement | HTMLDivElement> = imageItem.element;
+            const imageLazy: LazyImageAdapter<HTMLImageElement | HTMLDivElement>
+                      = imageItem.element;
 
             const image: HTMLImageElement = this._getElementImage(imageLazy);
 
-            if (!imageItem.isLoaded) {
-                if (null !== imageItem.startLoad) {
-                    imageItem.startLoad.subscribe(isStartLoad => {
-                        if (isStartLoad === true) {
-                            imageLazy.setPath(imageItem.path);
+            if (null !== imageItem.startLoad) {
+                const imageStartLoadSubId = imageItem.startLoad.subscribe((isStartLoad) => {
+                    if (isStartLoad === true) {
+                        imageLazy.setPath(imageItem.path);
 
-                            if (this._isBackgroundImage) {
-                                image.src = imageLazy.getPath();
-                            }
+                        if (this.plusLazyBg) {
+                            image.src = imageLazy.getPath();
                         }
-                    });
-                } else {
-                    imageLazy.setPath(imageItem.path);
-
-                    if (this._isBackgroundImage) {
-                        image.src = imageLazy.getPath();
                     }
+                });
+
+                this._subscribe.add(imageStartLoadSubId);
+            } else {
+                imageLazy.setPath(imageItem.path);
+
+                if (this.plusLazyBg) {
+                    image.src = imageLazy.getPath();
                 }
             }
 
             return Observable
-                .create(observer => {
+                .create((observer: Observer<LazyImage>) => {
                     image.onload  = () => {
                         this._finishLoading(imageLazy);
                         observer.next(imageItem);
                         observer.complete();
                     };
-                    image.onerror = err => {
+                    image.onerror = (err) => {
                         this._filedLoaded(imageLazy);
-                        observer.error(null);
+                        observer.error(err);
                     };
                 });
         });
     }
 
+    /**
+     * Method call when image start loading
+     * @param {LazyImageAdapter<HTMLImageElement | HTMLDivElement>} element
+     * @private
+     */
     private _startLoading(element: LazyImageAdapter<HTMLImageElement | HTMLDivElement>): void {
         this.plusLoadingClass = true;
 
         if (this.isPreLoader) {
             element.setPath(this.preImage || Constants.DEFAULT_PRELOADER);
 
-            if (!this._isBackgroundImage) {
+            if (!this.plusLazyBg) {
                 element.setStyle('object-fit', 'contain');
             }
         } else {
-            if (!this._isBackgroundImage) {
+            if (!this.plusLazyBg) {
                 element.setStyle('visibility', 'hidden');
             }
         }
     }
 
+    /**
+     * Method call when image load is finished
+     * @param {LazyImageAdapter<HTMLImageElement | HTMLDivElement>} element
+     * @private
+     */
     private _finishLoading(element: LazyImageAdapter<HTMLImageElement | HTMLDivElement>): void {
         this.plusLoadingClass = false;
         this.plusLoadedClass  = true;
 
         if (this.isPreLoader) {
-            if (!this._isBackgroundImage) {
+            if (!this.plusLazyBg) {
                 element.setStyle('object-fit', '');
             }
         } else {
-            if (!this._isBackgroundImage) {
+            if (!this.plusLazyBg) {
                 element.setStyle('visibility', 'visible');
             }
         }
     }
 
+    /**
+     * Method call when image load is failed
+     * @param {LazyImageAdapter<HTMLImageElement | HTMLDivElement>} image
+     * @private
+     */
     private _filedLoaded(image: LazyImageAdapter<HTMLImageElement | HTMLDivElement>): void {
         this.plusFailedClass = true;
     }
 
-    private _getElement(element?: HTMLImageElement | HTMLDivElement): LazyImageAdapter<HTMLImageElement | HTMLDivElement> {
-        if (this._isBackgroundImage) {
-            return new ImageBackgroundElement(<HTMLDivElement>this.element);
+    /**
+     * Method for get image adapter
+     * @param {HTMLImageElement | HTMLDivElement} element
+     * @returns {LazyImageAdapter<HTMLImageElement | HTMLDivElement>}
+     * @private
+     */
+    private _getElement(
+        element?: HTMLImageElement | HTMLDivElement,
+    ): LazyImageAdapter<HTMLImageElement | HTMLDivElement> {
+        if (this.plusLazyBg) {
+            return new ImageBackgroundElement(element as HTMLDivElement);
         }
 
-        return new ImageElement(<HTMLImageElement>this.element);
+        return new ImageElement(element as HTMLImageElement);
     }
 
+    /**
+     * Method for get Image element
+     * @param {LazyImageAdapter<any>} imageLazy
+     * @returns {HTMLImageElement}
+     * @private
+     */
     private _getElementImage(imageLazy: LazyImageAdapter<any>): HTMLImageElement {
-        if (this._isBackgroundImage) {
+        if (this.plusLazyBg) {
             return new Image();
         }
 
         return imageLazy.getRef();
-    }
-}
-
-class ImageBackgroundElement implements LazyImageAdapter<HTMLDivElement> {
-    private _imageElement: HTMLDivElement;
-
-    public constructor(imageDiv: HTMLDivElement) {
-        this._imageElement = imageDiv;
-    }
-
-    public setPath(path: string): void {
-        this._imageElement.style.backgroundImage = `url('${path}')`;
-    }
-
-    public getPath(): string {
-        return this._imageElement.style.backgroundImage.replace(/url\(['"]?(.*?)['"]?\)/i, "$1");
-    }
-
-    public setStyle(style: string, value: any): void {
-        this._imageElement.style[ style ] = value;
-    }
-
-    public getRef(): HTMLDivElement {
-        return this._imageElement;
-    }
-}
-
-class ImageElement implements LazyImageAdapter<HTMLImageElement> {
-    private _imageElement: HTMLImageElement;
-
-    public constructor(image: HTMLImageElement) {
-        this._imageElement = image;
-    }
-
-    public setPath(path: string): void {
-        this._imageElement.src = path;
-    }
-
-    public getPath() {
-        return this._imageElement.src;
-    }
-
-    public setStyle(style: string, value: any): void {
-        this._imageElement.style[ style ] = value;
-    }
-
-    public getRef(): HTMLImageElement {
-        return this._imageElement;
     }
 }

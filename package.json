@@ -1,5 +1,5 @@
 {
-  "name": "plus-angular-lazy-load-images",
+  "name": "plus-lazy-image",
   "version": "0.0.1",
   "description": "Angular 4+ lazy load images",
   "main": "./dist/index.umd.js",
@@ -16,7 +16,7 @@
     "typescript"
   ],
   "author": {
-    "name": "Aleksandr Krukhtenko",
+    "name": "Aleksandr Krykhtenko",
     "url": "https://www.upwork.com/o/profiles/users/_~01ccf26113bf77042e/"
   },
   "repository": {
@@ -34,11 +34,11 @@
     "build:umd": "webpack --config webpack-umd.config.ts",
     "build:umd:watch": "npm run build:umd -- --watch",
     "build:watch": "concurrently --raw \"npm run build:umd:watch\" \"npm run build:esm:watch\"",
-    "ci": "npm run lint && npm run test && npm run build && npm run docs",
+    "ci": "npm run lint && npm run build",
     "clean:all": "npm run clean:tmp && rimraf node_modules",
     "clean:tmp": "rimraf coverage dist tmp docs",
     "codecov": "cat coverage/lcov.info | codecov",
-    "docs": "compodoc -p tsconfig.json -d docs --disableCoverage --disablePrivateOrInternalSupport",
+    "docs": "compodoc -p tsconfig.json -d docs --disableCoverage --disablePrivate --disableProtected --disableInternal --disableLifeCycleHooks",
     "explorer": "source-map-explorer ./dist/index.umd.js",
     "gh-pages": "rimraf docs && npm run docs && gh-pages -d docs",
     "lint": "npm run tslint 'src/**/*.ts'",

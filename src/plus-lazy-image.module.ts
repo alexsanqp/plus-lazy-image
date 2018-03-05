@@ -1,20 +1,20 @@
-import { NgModule } from "@angular/core";
-import { PlusLazyImageComponent } from "./components";
-import { PlusLazyImageDirective } from "./directives";
+import { NgModule } from '@angular/core';
+import { PlusLazyImageComponent } from './components';
+import { PlusLazyImageDirective } from './directives';
 
 @NgModule({
-    providers   : [],
-    declarations: [
+    providers      : [],
+    declarations   : [
         PlusLazyImageDirective,
         PlusLazyImageComponent,
     ],
-    exports     : [
+    exports        : [
         PlusLazyImageDirective,
         PlusLazyImageComponent,
     ],
     entryComponents: [
         PlusLazyImageComponent,
-    ]
+    ],
 })
 export class PlusLazyImageModule {
 }

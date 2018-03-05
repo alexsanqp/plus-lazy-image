@@ -25,12 +25,18 @@ import { PlusLazyImageModule } from "plus-lazy-image";
 export class AppModule { }
 ```
 
-How to use...
+How to use with image...
 
 ```html
 <div class="some-class">
     <img [plus-lazy-image]="getYourImageUrl()" alt="">
-</span>
+</div>
+```
+Or with div...
+```html
+<div class="some-class">
+    <div [plus-lazy-bg]="true" [plus-lazy-image]="getYourImageUrl()"></div>
+</div>
 ```
 
 ## Input parameters
