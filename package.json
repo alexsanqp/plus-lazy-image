@@ -1,6 +1,6 @@
 {
   "name": "plus-lazy-image",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Angular 4+ lazy load images",
   "main": "./dist/index.umd.js",
   "module": "./dist/index.js",
