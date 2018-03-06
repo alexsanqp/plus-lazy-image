@@ -1,5 +1,9 @@
 ## Description
-> A lazy loading imaging for Angular 4.
+> Lazy loading imaging for Angular 4.
+
+## Demo
+
+> https://stackblitz.com/edit/angular-8hp86e
 
 ## Installation
 
